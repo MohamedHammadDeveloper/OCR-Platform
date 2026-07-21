@@ -1,0 +1,25 @@
+# --- Core inference stack (versions pinned by the legal-documents project) ---
+transformers==4.57.6
+optimum==1.26.0
+accelerate==1.8.0
+peft==0.17.0
+
+# PyTorch — install the build matching your CUDA runtime, e.g.
+#   pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu121
+torch==2.8.0
+torchvision==0.23.0
+
+# --- OCR pipeline dependencies ---
+numpy
+Pillow>=10.0.0
+json-repair>=0.30.0
+sentencepiece>=0.2.0
+
+# --- Model download / local storage ---
+huggingface_hub>=0.34.0
+
+# --- API layer ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+pydantic>=2.7.0
