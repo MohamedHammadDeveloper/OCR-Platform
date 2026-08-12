@@ -23,10 +23,12 @@ from prompt import build_target, user_content_llamafactory
 def sample(record, images_root):
     # forward slashes only — training runs on Linux (vast.ai)
     img = images_root.rstrip("/\\") + "/" + record["image"].replace("\\", "/")
+    # LLaMA-Factory CANONICAL sharegpt: conversations + from/value + human/gpt.
+    # (The role/content/user/assistant variant left labels unmasked -> grad_norm 0.)
     return {
-        "messages": [
-            {"role": "user", "content": user_content_llamafactory()},
-            {"role": "assistant", "content": build_target(record)},
+        "conversations": [
+            {"from": "human", "value": user_content_llamafactory()},
+            {"from": "gpt", "value": build_target(record)},
         ],
         "images": [img],
     }
@@ -57,20 +59,15 @@ def main():
         json.dump(data, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print(f"wrote {path}: {len(data)} samples")
 
-    info = {
-        "flash_train": {
-            "file_name": "flash_train.json", "formatting": "sharegpt",
-            "columns": {"messages": "messages", "images": "images"},
-            "tags": {"role_tag": "role", "content_tag": "content",
-                     "user_tag": "user", "assistant_tag": "assistant"},
-        },
-        "flash_val": {
-            "file_name": "flash_val.json", "formatting": "sharegpt",
-            "columns": {"messages": "messages", "images": "images"},
-            "tags": {"role_tag": "role", "content_tag": "content",
-                     "user_tag": "user", "assistant_tag": "assistant"},
-        },
-    }
+    def entry(fn):
+        return {
+            "file_name": fn, "formatting": "sharegpt",
+            "columns": {"messages": "conversations", "images": "images"},
+            "tags": {"role_tag": "from", "content_tag": "value",
+                     "user_tag": "human", "assistant_tag": "gpt"},
+        }
+    info = {"flash_train": entry("flash_train.json"),
+            "flash_val": entry("flash_val.json")}
     json.dump(info, open(os.path.join(args.out_dir, "dataset_info.json"), "w",
                          encoding="utf-8"), ensure_ascii=False, indent=2)
     print("wrote", os.path.join(args.out_dir, "dataset_info.json"))
