@@ -27,9 +27,11 @@ from prompt import INSTRUCTION
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default="merged/legal-flash-v1",
-                    help="merged model dir or HF repo id (or the base, if using --adapter)")
-    ap.add_argument("--adapter", default=None, help="optional LoRA dir to load on top of --model")
+    ap.add_argument("--model", default="Qwen/Qwen2.5-VL-7B-Instruct",
+                    help="base (default = v1 7B base) or a merged model dir/repo id")
+    ap.add_argument("--adapter", default="saves/qwen25vl-7b-lora",
+                    help="LoRA on top of --model. Local v1 run by default; or the HF repo "
+                         "m-hammad/legal-flash-7b-lora-v1 on a fresh box. Pass '' for base only.")
     ap.add_argument("--image", required=True)
     ap.add_argument("--bits", type=int, default=16, choices=[4, 16])
     ap.add_argument("--max-new-tokens", type=int, default=2048)

@@ -1,9 +1,17 @@
 # Flash fine-tuning (v1)
 
-Continue-fine-tune the Arabic-handwritten **Qwen2.5-VL-3B**
-(`sherif1313/Arabic-English-handwritten-OCR-v3`) on the Egyptian MoJ legal-docs
-gold, producing one model that outputs, per page:
+Fine-tune **Qwen2.5-VL-7B-Instruct** (Apache-2.0) on the Egyptian MoJ legal-docs
+gold via QLoRA, producing a model that outputs, per page:
 `{ document_id, document_type, subject, keywords, full_text }`.
+
+## ✅ STATUS — v1 DONE (continue from here, don't restart)
+- **v1 trained + evaluated + uploaded.** Base = `Qwen/Qwen2.5-VL-7B-Instruct`; adapter (private) =
+  **`m-hammad/legal-flash-7b-lora-v1`**. On the 60 held-out test: text-sim 0.29→0.46 (+60% rel),
+  type-acc 0→45%, JSON 100%.
+- **The 3B run (Run A) is ⛔ BLOCKED** — its base won't tie lm_head (loss stuck 11.93). Don't retry.
+- **To CONTINUE (v2):** label more of your own data (esp. degraded handwriting) →
+  `python build_dataset.py --val 30` → retrain Run B → upload as `...-v2`. Same working recipe;
+  only the gold grows. Inference now: `python predict.py --image <page>` (defaults already point at v1).
 
 QLoRA (4-bit) via **LLaMA-Factory** (handles Qwen2.5-VL multimodal SFT + correct
 label masking). Evaluation is a standalone transformers script.
@@ -34,19 +42,11 @@ git clone https://github.com/hiyouga/LLaMA-Factory
 pip install -e "LLaMA-Factory[torch,metrics,bitsandbytes]"
 ```
 
-## 2b. Get the base model (~7.5 GB) — the handwriting checkpoint we continue from
-`sherif1313/Arabic-English-handwritten-OCR-v3` (Qwen2.5-VL-3B, **public, not gated**).
-Training auto-downloads it on first run, but pre-download it to catch network/space
-issues early and to time the ~7.5 GB pull separately from training:
+## 2b. Get the base model (~16 GB, Apache-2.0, public)
 ```bash
-huggingface-cli download sherif1313/Arabic-English-handwritten-OCR-v3
+hf download Qwen/Qwen2.5-VL-7B-Instruct
 ```
-For **Run B** also pre-pull the 7B base (~16 GB, Apache-2.0):
-```bash
-huggingface-cli download Qwen/Qwen2.5-VL-7B-Instruct
-```
-No HF token needed (public). Caches to `~/.cache/huggingface`; the yaml's
-`model_name_or_path` loads from cache. Free space: **~20 GB** for Run A, **~35 GB** for Run B.
+No token needed. Caches to `~/.cache/huggingface`. Free space: **~35 GB**.
 
 ## 3. Build the SFT dataset (paths already default to the in-repo data)
 ```bash
@@ -54,54 +54,39 @@ python build_dataset.py --val 30
 ```
 Produces `data/flash_train.json` (269), `data/flash_val.json` (30), `data/dataset_info.json`.
 
-## Two SEPARATE runs — we train both and compare (don't pick blind)
-Each base lives in its own folder with its own config + output dir; nothing shared but
-the scripts and `data/`. Run everything **from `training/flash/`**.
-
-| Run | Config | Base | Note |
+## The runs (run from `training/flash/`)
+| Run | Config | Base | Status |
 | --- | --- | --- | --- |
-| **A (3B)** | `runs/qwen25vl-3b/lora_sft.yaml` | sherif v3 (Qwen2.5-VL-3B) | handwriting warm-start; wins likely with small data. **License: qwen-research → R&D only** |
-| **B (7B)** | `runs/qwen25vl-7b/lora_sft.yaml` | Qwen2.5-VL-7B-Instruct | Apache-2.0 (production-clean); bigger, no warm-start |
+| **A (3B)** | `runs/qwen25vl-3b/lora_sft.yaml` | sherif v3 (Qwen2.5-VL-3B) | ⛔ **BLOCKED** — lm_head won't tie (loss 11.93). Don't run. |
+| **B (7B)** | `runs/qwen25vl-7b/lora_sft.yaml` | Qwen2.5-VL-7B-Instruct | ✅ **WORKING — this is v1.** Apache-2.0. |
 
-Same data / hyperparams / pixel budget → the only difference is the base. The test-set
-numbers decide which to keep.
+Run B is the model. Retrain it on the growing gold for each new version.
 
 ## 4. Smoke test first (cheap — catch config/path errors before the real run)
 In the chosen run's yaml temporarily set `num_train_epochs: 1` and add `max_samples: 8`,
 run step 5, confirm it trains + saves, then revert.
 
-## 5. Train (each run separately)
+## 5. Train (Run B = the 7B model)
 ```bash
-llamafactory-cli train runs/qwen25vl-3b/lora_sft.yaml   # Run A -> saves/qwen25vl-3b-lora
-llamafactory-cli train runs/qwen25vl-7b/lora_sft.yaml   # Run B -> saves/qwen25vl-7b-lora
+llamafactory-cli train runs/qwen25vl-7b/lora_sft.yaml   # -> saves/qwen25vl-7b-lora
 ```
-~3 epochs over 269 samples is short (tens of minutes). Watch eval loss on `flash_val`.
+~3 epochs over the current gold is short (tens of minutes). Watch eval loss on `flash_val`.
+For v2, just regrow the gold (label more) and re-run this — bump the HF version on upload.
 
-## 6. Evaluate on the held-out test — compare A vs B (and vs their bases)
+## 6. Evaluate on the held-out test (defaults already point at the 7B v1)
 ```bash
-# Run A (3B)
-python evaluate.py --base sherif1313/Arabic-English-handwritten-OCR-v3 --out report_3b_base.json
-python evaluate.py --base sherif1313/Arabic-English-handwritten-OCR-v3 --adapter saves/qwen25vl-3b-lora --out report_3b_ft.json
-# Run B (7B)
-python evaluate.py --base Qwen/Qwen2.5-VL-7B-Instruct --out report_7b_base.json
-python evaluate.py --base Qwen/Qwen2.5-VL-7B-Instruct --adapter saves/qwen25vl-7b-lora --out report_7b_ft.json
+python evaluate.py --out report_7b_ft.json                 # fine-tuned (default adapter)
+python evaluate.py --adapter "" --out report_7b_base.json  # base only (compare gain)
 ```
 Metrics: JSON parse rate, `document_type` accuracy, full_text similarity, keyword recall.
-Pick the winner on the test numbers (weigh 3B's license constraint).
 
-## 6b. Try it on ONE image first (sanity check before uploading)
+## 6b. Try it on ONE image (defaults = 7B base + v1 adapter)
 ```bash
-# Run A (3B) base + adapter
-python predict.py --model sherif1313/Arabic-English-handwritten-OCR-v3 \
-  --adapter saves/qwen25vl-3b-lora \
-  --image dataset/images/OCR2/Alex/2022/5-2022/30040000520220111_p001.png
-# Run B (7B) base + adapter
-python predict.py --model Qwen/Qwen2.5-VL-7B-Instruct \
-  --adapter saves/qwen25vl-7b-lora \
-  --image dataset/images/OCR2/Alex/2022/5-2022/30040000520220111_p001.png
+python predict.py --image dataset/images/OCR2/Alex/2022/5-2022/30040000520220111_p001.png
 ```
-Prints the raw output + parsed `document_type / subject / keywords / full_text`. Point
-`--image` at any page (in `dataset/images/…`, or your own). Add `--bits 4` if VRAM is tight.
+On a fresh box (no local `saves/`) pull the uploaded adapter instead:
+`python predict.py --adapter m-hammad/legal-flash-7b-lora-v1 --image <page>`.
+Add `--bits 4` if VRAM is tight.
 
 ---
 
@@ -110,12 +95,13 @@ Prints the raw output + parsed `document_type / subject / keywords / full_text`.
 **GitHub is for code, NOT model weights.** Get the trained model off the box via
 **Hugging Face Hub** (best) or direct download:
 
-**Option A — push the LoRA adapter to HF Hub (recommended, small ~30–100 MB):**
+**Option A — push the LoRA adapter to HF Hub (recommended, small ~50–100 MB). v1 already done:**
 ```bash
-huggingface-cli login
-huggingface-cli upload m-hammad/flash-qwen25vl-3b-lora-v1 saves/qwen25vl-3b-lora .
+hf auth login   # paste your WRITE token when prompted (never in chat/command history)
+python -c "from huggingface_hub import create_repo; create_repo('m-hammad/legal-flash-7b-lora-v1', repo_type='model', private=True)"
+hf upload m-hammad/legal-flash-7b-lora-v1 saves/qwen25vl-7b-lora .
 ```
-Version each run as `-v1`, `-v2`, … (or use HF repo revisions/branches).
+Version each retrain as `-v2`, `-v3`, …
 
 **Option B — merge to a standalone model, then push (RECOMMENDED for a clean v1 model):**
 ```bash
@@ -127,20 +113,20 @@ llamafactory-cli export export_merge.yaml
 ls merged/legal-flash-v1
 
 # 3) log in with a WRITE token (https://huggingface.co/settings/tokens)
-huggingface-cli login
+hf auth login
 
 # 4) create the repo as PRIVATE (recommended for MoJ data) — website, or:
 python -c "from huggingface_hub import create_repo; create_repo('m-hammad/legal-flash-v1', repo_type='model', private=True)"
 
 # 5) upload the merged folder to it
-huggingface-cli upload m-hammad/legal-flash-v1 merged/legal-flash-v1 .
+hf upload m-hammad/legal-flash-v1 merged/legal-flash-v1 .
 ```
-Note: a bare `huggingface-cli upload` auto-creates the repo but **public** — create it
-first (step 4) to keep it private. Merged 3B ≈ ~7.5 GB — HF Hub only, never git. Load it
+Note: a bare `hf upload` auto-creates the repo but **public** — create it
+first (step 4) to keep it private. Merged 7B ≈ ~16 GB — HF Hub only, never git. Load it
 anywhere with just the repo id (no base, no adapter):
 `Qwen2_5_VLForConditionalGeneration.from_pretrained("m-hammad/legal-flash-v1")`.
 
-**Option C — no Hub:** download `saves/qwen25vl-3b-lora/` directly (vast.ai file
+**Option C — no Hub:** download `saves/qwen25vl-7b-lora/` directly (vast.ai file
 browser / `scp` / `rsync`).
 
 ### Serving it in the platform

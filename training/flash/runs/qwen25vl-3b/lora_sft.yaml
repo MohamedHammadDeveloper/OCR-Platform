@@ -1,3 +1,9 @@
+# ========================= ⛔ BLOCKED — DO NOT USE ==========================
+# This 3B base (sherif v3) has tie_word_embeddings=true and its lm_head will NOT
+# tie in LLaMA-Factory (LOAD REPORT: lm_head.weight MISSING) → loss stuck at
+# ln(vocab)=11.93, ZERO learning (confirmed in bf16 AND 4-bit). Kept only as a
+# record. The working v1 is Run B (7B). Revisit only if you fix the base loading.
+# ============================================================================
 # === RUN A: Qwen2.5-VL-3B (handwriting warm-start base) ===
 # Base = sherif1313/Arabic-English-handwritten-OCR-v3 (already fine-tuned on Arabic
 # handwriting → head start on the hard skill, valuable with our small dataset).

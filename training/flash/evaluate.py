@@ -59,8 +59,9 @@ def infer(model, proc, image_path, max_new_tokens):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="sherif1313/Arabic-English-handwritten-OCR-v3")
-    ap.add_argument("--adapter", default=None, help="LoRA dir; omit to eval the base model (baseline)")
+    ap.add_argument("--base", default="Qwen/Qwen2.5-VL-7B-Instruct")   # v1 base (Apache, working)
+    ap.add_argument("--adapter", default="saves/qwen25vl-7b-lora",
+                    help="LoRA dir (default = the v1 7B run). Pass '' or a base-only run to eval the base.")
     ap.add_argument("--test", default="dataset/labels/v1_test_gold.jsonl")
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--bits", type=int, default=4, choices=[4, 16])
