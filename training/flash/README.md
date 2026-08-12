@@ -78,15 +78,26 @@ huggingface-cli upload <your-hf-user>/flash-qwen25vl-3b-lora-v1 saves/flash-qwen
 ```
 Version each run as `-v1`, `-v2`, … (or use HF repo revisions/branches).
 
-**Option B — merge to a standalone model, then push:**
+**Option B — merge to a standalone model, then push (RECOMMENDED for a clean v1 model):**
 ```bash
-llamafactory-cli export \
-  --model_name_or_path sherif1313/Arabic-English-handwritten-OCR-v3 \
-  --adapter_name_or_path saves/flash-qwen25vl-3b-lora \
-  --template qwen2_vl --finetuning_type lora --export_dir merged/legal-flash
-huggingface-cli upload <your-hf-user>/legal-flash-v1 merged/legal-flash .
+# 1) merge adapter into base -> merged/legal-flash-v1  (config: export_merge.yaml)
+llamafactory-cli export export_merge.yaml
+
+# 2) verify the export folder has: config.json, *.safetensors, tokenizer files,
+#    preprocessor_config.json, chat_template.jinja
+ls merged/legal-flash-v1
+
+# 3) log in with a WRITE token (https://huggingface.co/settings/tokens)
+huggingface-cli login
+
+# 4) create the repo (Private) — do it on the website, or:
+huggingface-cli repo create legal-flash-v1 --repo-type model --private
+
+# 5) upload the merged folder to it
+huggingface-cli upload <your-hf-user>/legal-flash-v1 merged/legal-flash-v1 .
 ```
-Merged 3B ≈ ~6 GB — HF Hub only, never git.
+Merged 3B ≈ ~7.5 GB — HF Hub only, never git. Load it anywhere with just the repo id
+(no base, no adapter): `Qwen2_5_VLForConditionalGeneration.from_pretrained("<user>/legal-flash-v1")`.
 
 **Option C — no Hub:** download `saves/flash-qwen25vl-3b-lora/` directly (vast.ai file
 browser / `scp` / `rsync`).
