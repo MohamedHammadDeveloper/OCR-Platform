@@ -1,0 +1,13 @@
+# Install on the vast.ai GPU box. Torch is usually preinstalled in the image;
+# if not: pip install torch --index-url https://download.pytorch.org/whl/cu124
+transformers>=4.49.0        # Qwen2.5-VL support landed in 4.49
+accelerate>=0.34
+peft>=0.13
+bitsandbytes>=0.44          # 4-bit QLoRA
+datasets>=3.0
+qwen-vl-utils>=0.0.8
+rapidfuzz>=3.9
+json_repair>=0.30
+pillow>=10.0
+# Training uses LLaMA-Factory (installed separately — see README):
+#   git clone https://github.com/hiyouga/LLaMA-Factory && pip install -e "LLaMA-Factory[torch,metrics,bitsandbytes]"

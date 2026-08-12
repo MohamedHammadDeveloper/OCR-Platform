@@ -1,0 +1,54 @@
+# LLaMA-Factory QLoRA config — continue-fine-tune the Arabic-handwritten
+# Qwen2.5-VL-3B on the Flash legal-docs gold. Run with:
+#   llamafactory-cli train qwen2_5vl_lora_sft.yaml
+
+### model — the existing handwriting checkpoint IS our base
+model_name_or_path: sherif1313/Arabic-English-handwritten-OCR-v3
+trust_remote_code: true
+image_max_pixels: 1048576        # cap vision tokens (~1024x1024) => bounds cost/len
+
+### method — QLoRA (4-bit), adapt the LLM, keep the vision tower frozen
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all                 # all linear layers of the LLM
+quantization_bit: 4
+quantization_method: bnb
+freeze_vision_tower: true         # reading ability already learned; adapt the head
+freeze_multi_modal_projector: true
+
+### dataset
+dataset_dir: ./data
+dataset: flash_train
+eval_dataset: flash_val
+template: qwen2_vl
+cutoff_len: 8192                  # long legal pages + image tokens
+overwrite_cache: true
+preprocessing_num_workers: 8
+
+### output
+output_dir: saves/flash-qwen25vl-3b-lora
+logging_steps: 5
+save_steps: 100
+save_total_limit: 3
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8    # effective batch 8
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+
+### eval during training
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 100

@@ -5,3 +5,10 @@ venv/
 .venv/
 uploads/*
 !uploads/.gitkeep
+
+# Flash training — generated on the GPU box, never commit
+training/flash/data/
+training/flash/saves/
+training/flash/merged/
+training/flash/report*.json
+training/flash/LLaMA-Factory/
