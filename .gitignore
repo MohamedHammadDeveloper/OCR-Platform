@@ -12,3 +12,4 @@ training/flash/saves/
 training/flash/merged/
 training/flash/report*.json
 training/flash/LLaMA-Factory/
+training/flash/base/
