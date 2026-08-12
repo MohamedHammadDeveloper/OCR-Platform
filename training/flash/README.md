@@ -28,6 +28,17 @@ git clone https://github.com/hiyouga/LLaMA-Factory
 pip install -e "LLaMA-Factory[torch,metrics,bitsandbytes]"
 ```
 
+## 2b. Get the base model (~7.5 GB) — the handwriting checkpoint we continue from
+`sherif1313/Arabic-English-handwritten-OCR-v3` (Qwen2.5-VL-3B, **public, not gated**).
+Training auto-downloads it on first run, but pre-download it to catch network/space
+issues early and to time the ~7.5 GB pull separately from training:
+```bash
+huggingface-cli download sherif1313/Arabic-English-handwritten-OCR-v3
+```
+No HF token needed (public). It caches to `~/.cache/huggingface`; the yaml's
+`model_name_or_path` then loads from cache. Make sure the box has **~20 GB free**
+(base 7.5 GB + 4-bit runtime + adapter/checkpoints).
+
 ## 3. Build the SFT dataset (paths already default to the in-repo data)
 ```bash
 python build_dataset.py --val 30
