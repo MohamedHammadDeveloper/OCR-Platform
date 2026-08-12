@@ -64,6 +64,22 @@ python evaluate.py --adapter saves/flash-qwen25vl-3b-lora --out report_ft.json  
 Metrics: JSON parse rate, `document_type` accuracy, full_text similarity, keyword recall.
 The gap between the two reports is what the fine-tuning actually bought you.
 
+## 6b. Try it on ONE image first (sanity check before uploading)
+Eyeball the model on a single page before committing to the merge + HF upload.
+
+Test the **base + adapter** (before merging):
+```bash
+python predict.py --model sherif1313/Arabic-English-handwritten-OCR-v3 \
+  --adapter saves/flash-qwen25vl-3b-lora \
+  --image dataset/images/OCR2/Alex/2022/5-2022/30040000520220111_p001.png
+```
+Or, after you've merged (step 7), test the **merged model**:
+```bash
+python predict.py --image dataset/images/OCR2/Alex/2022/5-2022/30040000520220111_p001.png
+```
+Prints the raw output + parsed `document_type / subject / keywords / full_text`. Point
+`--image` at any page (in `dataset/images/…`, or your own). Add `--bits 4` if VRAM is tight.
+
 ---
 
 ## 7. After training — getting the model out (IMPORTANT)
@@ -74,7 +90,7 @@ The gap between the two reports is what the fine-tuning actually bought you.
 **Option A — push the LoRA adapter to HF Hub (recommended, small ~30–100 MB):**
 ```bash
 huggingface-cli login
-huggingface-cli upload <your-hf-user>/flash-qwen25vl-3b-lora-v1 saves/flash-qwen25vl-3b-lora .
+huggingface-cli upload m-hammad/flash-qwen25vl-3b-lora-v1 saves/flash-qwen25vl-3b-lora .
 ```
 Version each run as `-v1`, `-v2`, … (or use HF repo revisions/branches).
 
@@ -90,14 +106,16 @@ ls merged/legal-flash-v1
 # 3) log in with a WRITE token (https://huggingface.co/settings/tokens)
 huggingface-cli login
 
-# 4) create the repo (Private) — do it on the website, or:
-huggingface-cli repo create legal-flash-v1 --repo-type model --private
+# 4) create the repo as PRIVATE (recommended for MoJ data) — website, or:
+python -c "from huggingface_hub import create_repo; create_repo('m-hammad/legal-flash-v1', repo_type='model', private=True)"
 
 # 5) upload the merged folder to it
-huggingface-cli upload <your-hf-user>/legal-flash-v1 merged/legal-flash-v1 .
+huggingface-cli upload m-hammad/legal-flash-v1 merged/legal-flash-v1 .
 ```
-Merged 3B ≈ ~7.5 GB — HF Hub only, never git. Load it anywhere with just the repo id
-(no base, no adapter): `Qwen2_5_VLForConditionalGeneration.from_pretrained("<user>/legal-flash-v1")`.
+Note: a bare `huggingface-cli upload` auto-creates the repo but **public** — create it
+first (step 4) to keep it private. Merged 3B ≈ ~7.5 GB — HF Hub only, never git. Load it
+anywhere with just the repo id (no base, no adapter):
+`Qwen2_5_VLForConditionalGeneration.from_pretrained("m-hammad/legal-flash-v1")`.
 
 **Option C — no Hub:** download `saves/flash-qwen25vl-3b-lora/` directly (vast.ai file
 browser / `scp` / `rsync`).
