@@ -12,7 +12,9 @@ model_name_or_path: sherif1313/Arabic-English-handwritten-OCR-v3
 trust_remote_code: true
 image_max_pixels: 1048576
 
-### method — QLoRA, vision tower frozen (identical to Run B for a fair comparison)
+### method — LoRA in bf16 (NOT 4-bit). This base has tie_word_embeddings=true, and
+### bnb 4-bit breaks the lm_head tie -> random head -> loss stuck at ln(vocab)=11.93.
+### bf16 loads the tie correctly. 3B bf16 + LoRA fits comfortably in ~16-24GB.
 stage: sft
 do_train: true
 finetuning_type: lora
@@ -20,8 +22,6 @@ lora_rank: 16
 lora_alpha: 32
 lora_dropout: 0.05
 lora_target: all
-quantization_bit: 4
-quantization_method: bnb
 freeze_vision_tower: true
 freeze_multi_modal_projector: true
 

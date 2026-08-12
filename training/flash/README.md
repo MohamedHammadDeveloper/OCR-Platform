@@ -13,7 +13,13 @@ label masking). Evaluation is a standalone transformers script.
 on the GPU box gets you everything; no separate data upload.
 
 ## GPU
-3B QLoRA needs ~10–14 GB VRAM. Any 16 GB+ card works (RTX 4090 / A100 / etc.).
+Run A (3B, **bf16 LoRA**) ~16–24 GB · Run B (7B, 4-bit QLoRA) ~16–24 GB. A 24 GB+ card
+(RTX 4090 / A100 / 5090) is comfortable for both.
+
+> **Troubleshooting — loss stuck at 11.93 (= ln(vocab), grad_norm 0, model learns nothing):**
+> the 3B base has `tie_word_embeddings=true` and bnb **4-bit breaks the lm_head tie** → random
+> output head. Fix: train the 3B in **bf16 (no `quantization_bit`)** — already set in Run A's config.
+> The 7B base is untied (lm_head saved) so 4-bit is fine there.
 
 ## 1. Clone (first thing on the vast.ai box)
 ```bash
