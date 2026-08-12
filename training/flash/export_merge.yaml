@@ -3,12 +3,15 @@
 # full-precision and self-contained (base no longer needed at load time).
 #   llamafactory-cli export export_merge.yaml
 
+# Set base + adapter to the WINNING run (they must match):
+#   Run A (3B): model=sherif1313/Arabic-English-handwritten-OCR-v3  adapter=saves/qwen25vl-3b-lora
+#   Run B (7B): model=Qwen/Qwen2.5-VL-7B-Instruct                    adapter=saves/qwen25vl-7b-lora
 model_name_or_path: sherif1313/Arabic-English-handwritten-OCR-v3
-adapter_name_or_path: saves/flash-qwen25vl-3b-lora
+adapter_name_or_path: saves/qwen25vl-3b-lora
 template: qwen2_vl
 finetuning_type: lora
 trust_remote_code: true
 
-export_dir: merged/legal-flash-v1     # local output folder (~7.5 GB)
+export_dir: merged/legal-flash-v1     # local output folder (~7.5-15 GB)
 export_size: 5                        # shard the safetensors at 5 GB each
 export_legacy_format: false
