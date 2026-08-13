@@ -65,7 +65,7 @@ def main():
     ap.add_argument("--test", default="dataset/labels/v1_test_gold.jsonl")
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--bits", type=int, default=4, choices=[4, 16])
-    ap.add_argument("--max-new-tokens", type=int, default=2048)
+    ap.add_argument("--max-new-tokens", type=int, default=3072)  # entities lengthen target (~2.1k tok max)
     ap.add_argument("--out", default="report.json")
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
