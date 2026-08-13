@@ -22,9 +22,40 @@ Usage (on the training box):
       --images-root /data/flash/images \
       --out-dir ./data --val 30
 """
-import argparse, json, os, random
+import argparse, hashlib, json, os, random
 
 from prompt import build_target, user_content_llamafactory
+
+
+def dedup_by_bytes(recs, images_root):
+    """Drop byte-identical duplicate scans (same image under OCR1/alex2020 AND
+    OCR2/Alex/2020 trees, etc.). Keeps ONE record per md5 group — the one whose
+    image path sorts first — so the choice is deterministic and reproducible on
+    any box. This matters because the manifest lists the duplicated scans as
+    separate rows, so the sampler labeled some pages twice (occasionally with
+    conflicting types); training on both wastes capacity and injects noise."""
+    groups = {}
+    missing = 0
+    for r in recs:
+        p = images_root.rstrip("/\\") + "/" + r["image"].replace("\\", "/")
+        try:
+            with open(p, "rb") as f:
+                h = hashlib.md5(f.read()).hexdigest()
+        except OSError:
+            missing += 1
+            h = "MISSING:" + r["image"]  # never merge un-hashable rows together
+        groups.setdefault(h, []).append(r)
+    keep, dropped = [], []
+    for h, rs in groups.items():
+        rs_sorted = sorted(rs, key=lambda r: r["image"].replace("\\", "/"))
+        keep.append(rs_sorted[0])
+        dropped.extend(rs_sorted[1:])
+    if missing:
+        print(f"dedup: WARNING {missing} rows could not be hashed (image not found) — kept as-is")
+    if dropped:
+        print(f"dedup: dropped {len(dropped)} byte-identical duplicate scans "
+              f"({len(keep)} unique kept)")
+    return keep, dropped
 
 
 def sample(record, images_root):
@@ -54,6 +85,8 @@ def main():
     ap.add_argument("--include-heldout", action="store_true",
                     help="TRAIN on the held-out branches too. Only for the final production "
                          "model — it makes test metrics incomparable with earlier runs.")
+    ap.add_argument("--no-dedup", action="store_true",
+                    help="skip byte-identical duplicate-scan removal (dedup is ON by default)")
     args = ap.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
@@ -61,6 +94,15 @@ def main():
     # drop fully-blank transcriptions from training (low value)
     recs = [r for r in recs if r.get("full_text", "").strip()
             and r["full_text"].strip() != "[صفحة فارغة - لا يوجد نص مقروء]"]
+
+    # drop byte-identical duplicate scans (same page under OCR1/alex2020 & OCR2/Alex trees)
+    if not args.no_dedup:
+        recs, dup_dropped = dedup_by_bytes(recs, args.images_root)
+        if dup_dropped:
+            path = os.path.join(args.out_dir, "excluded_dups.json")
+            json.dump([r["image"] for r in dup_dropped], open(path, "w", encoding="utf-8"),
+                      ensure_ascii=False, indent=1)
+            print(f"  dup list -> {path} (gold on disk is untouched)")
 
     prefixes = tuple(p.strip().rstrip("/") + "/"
                      for p in args.heldout_branches.split(",") if p.strip())
