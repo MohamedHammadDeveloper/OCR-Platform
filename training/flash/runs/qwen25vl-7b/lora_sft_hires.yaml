@@ -1,0 +1,62 @@
+# === RUN B-hires: Qwen2.5-VL-7B, HIGHER training resolution (resolution sweep) ===
+# Identical to runs/qwen25vl-7b/lora_sft.yaml EXCEPT image_max_pixels (1.05M -> 2.1M)
+# and output_dir. Rationale: our scans are ~2496x3508 (~8.75M px) but training
+# downscaled them to <=1.05M px (~12% area) — faint handwriting detail is lost before
+# the model ever sees it. This variant feeds ~2x the pixels so the LoRA learns from
+# finer strokes. Eval each run at a MATCHING --max-pixels for a clean comparison.
+#
+# VRAM note: ~2x visual tokens/image (~2550 tokens for a full page). cutoff_len 8192
+# still fits (visual ~2550 + target ~2100). If OOM, drop per_device_train_batch_size
+# is already 1 — lower image_max_pixels or use a bigger card.
+#
+# Run FROM training/flash/:
+#   llamafactory-cli train runs/qwen25vl-7b/lora_sft_hires.yaml
+
+### model
+model_name_or_path: Qwen/Qwen2.5-VL-7B-Instruct
+trust_remote_code: true
+image_max_pixels: 2097152          # <-- 2x the baseline (was 1048576)
+
+### method — same QLoRA 4-bit (7B lm_head untied, 4-bit is safe here)
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+quantization_bit: 4
+quantization_method: bnb
+freeze_vision_tower: true
+freeze_multi_modal_projector: true
+
+### dataset (same ./data as the baseline run)
+dataset_dir: ./data
+dataset: flash_train
+eval_dataset: flash_val
+template: qwen2_vl
+cutoff_len: 8192
+overwrite_cache: true
+preprocessing_num_workers: 8
+
+### output (SEPARATE dir so it never clobbers the baseline v3 adapter)
+output_dir: saves/qwen25vl-7b-lora-hires
+logging_steps: 5
+save_steps: 100
+save_total_limit: 3
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### train (identical hyperparams to the baseline)
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 100

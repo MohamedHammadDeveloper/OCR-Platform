@@ -43,9 +43,14 @@ def load(base, adapter, bits):
     return model, proc
 
 
-def infer(model, proc, image_path, max_new_tokens):
+def infer(model, proc, image_path, max_new_tokens, max_pixels=0, min_pixels=0):
+    image_ele = {"type": "image", "image": image_path}
+    if max_pixels:            # cap the image to this many pixels before the vision encoder
+        image_ele["max_pixels"] = max_pixels
+    if min_pixels:
+        image_ele["min_pixels"] = min_pixels
     messages = [{"role": "user", "content": [
-        {"type": "image", "image": image_path},
+        image_ele,
         {"type": "text", "text": INSTRUCTION}]}]
     text = proc.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     imgs, vids = process_vision_info(messages)
@@ -66,6 +71,10 @@ def main():
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--bits", type=int, default=4, choices=[4, 16])
     ap.add_argument("--max-new-tokens", type=int, default=3072)  # entities lengthen target (~2.1k tok max)
+    ap.add_argument("--max-pixels", type=int, default=0,
+                    help="cap each image to this many pixels at eval (0 = qwen default ~12.8M ≈ full res). "
+                         "Set to match training image_max_pixels (1048576) for a clean resolution sweep.")
+    ap.add_argument("--min-pixels", type=int, default=0)
     ap.add_argument("--out", default="report.json")
     ap.add_argument("--limit", type=int, default=0)
     args = ap.parse_args()
@@ -78,7 +87,7 @@ def main():
     rows, parsed_ok, type_ok, sims, krecs = [], 0, 0, [], []
     for i, r in enumerate(recs, 1):
         img = os.path.join(args.images_root, r["image"].replace("\\", "/"))
-        raw = infer(model, proc, img, args.max_new_tokens)
+        raw = infer(model, proc, img, args.max_new_tokens, args.max_pixels, args.min_pixels)
         pred = json_repair.loads(raw)
         ok = isinstance(pred, dict)
         parsed_ok += ok
