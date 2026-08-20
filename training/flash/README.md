@@ -34,9 +34,10 @@ Run A (3B, **bf16 LoRA**) ~16–24 GB · Run B (7B, 4-bit QLoRA) ~16–24 GB. A 
 Gold = `dataset/labels/labels_resolved.jsonl` (5694 pages, in git). Build the SFT data
 ON THE BOX (`data/` is gitignored — deterministic rebuild, seed 42):
 ```bash
-python build_dataset.py --gold dataset/labels/labels_resolved.jsonl     --images-root dataset/images --out-dir ./data --val 150 --no-dedup
+python build_dataset.py
 ```
-(`--no-dedup` is correct: labels_resolved is already md5-unique.)
+(defaults now point at labels_resolved.jsonl with --val 150; a bare run was verified
+byte-identical to the explicit-flags build. The gold is already md5-unique.)
 Expect: flash_train 4685 / flash_val 150. Images are NOT in git — unzip
 `v4_images_bundle.zip` so its `images/` lands at `training/flash/dataset/images/`
 (it also carries `labels/labels_resolved.jsonl` + `labels/v1_test_gold_human.jsonl`).
@@ -76,9 +77,10 @@ No token needed. Caches to `~/.cache/huggingface`. Free space: **~35 GB**.
 
 ## 3. Build the SFT dataset (paths already default to the in-repo data)
 ```bash
-python build_dataset.py --val 30
+python build_dataset.py
 ```
-Produces `data/flash_train.json` (269), `data/flash_val.json` (30), `data/dataset_info.json`.
+v4 defaults: labels_resolved.jsonl, --val 150 -> flash_train 4685 / flash_val 150.
+(The v1 run was `--gold dataset/labels/v1_gold.jsonl --val 30` -> 269/30.)
 
 ## The runs (run from `training/flash/`)
 | Run | Config | Base | Status |
