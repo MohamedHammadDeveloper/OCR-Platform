@@ -21,7 +21,7 @@ def main():
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
-    golds = ["v1_gold.jsonl", "v1_test_gold.jsonl"]
+    golds = ["labels_resolved.jsonl", "v1_test_gold_human.jsonl"]
     imgs_out = os.path.join(args.out, "images")
     lbl_out = os.path.join(args.out, "labels")
     os.makedirs(imgs_out, exist_ok=True)

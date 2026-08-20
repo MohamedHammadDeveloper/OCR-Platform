@@ -1,7 +1,8 @@
 """
 Convert Flash gold JSONL -> LLaMA-Factory multimodal SFT format.
 
-Reads v1_gold.jsonl (299 train), splits into train/val, and writes:
+Reads the resolved Gemini gold (labels_resolved.jsonl, 5694 pages; v1-v3 used
+v1_gold.jsonl), splits into train/val, and writes:
   - flash_train.json  (list of {messages, images})
   - flash_val.json
   - dataset_info.json  (registration LLaMA-Factory reads)
@@ -18,7 +19,7 @@ model, once you are no longer comparing runs.
 
 Usage (on the training box):
   python build_dataset.py \
-      --gold /data/flash/labels/v1_gold.jsonl \
+      --gold dataset/labels/labels_resolved.jsonl \
       --images-root /data/flash/images \
       --out-dir ./data --val 30
 """
@@ -74,10 +75,10 @@ def sample(record, images_root):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--gold", default="dataset/labels/v1_gold.jsonl")
+    ap.add_argument("--gold", default="dataset/labels/labels_resolved.jsonl")
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--out-dir", default="./data")
-    ap.add_argument("--val", type=int, default=30, help="val examples held out from train gold")
+    ap.add_argument("--val", type=int, default=150, help="val examples held out from train gold")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--heldout-branches", default="OCR1/Alex2017,OCR2/Giza",
                     help="comma-separated path prefixes that make up the held-out TEST split; "

@@ -1,5 +1,7 @@
 """
-Evaluate the fine-tuned Flash model on the held-out test gold (v1_test_gold.jsonl).
+Evaluate the fine-tuned Flash model on the held-out HUMAN test gold
+(v1_test_gold_human.jsonl, 53 pages). The old v1_test_gold.jsonl is Opus-labeled;
+numbers measured against it are NOT comparable to human-ground-truth numbers.
 
 Loads the base handwriting model + the trained LoRA adapter, runs inference on each
 test page, and reports:
@@ -12,7 +14,7 @@ Usage:
   python evaluate.py \
       --base sherif1313/Arabic-English-handwritten-OCR-v3 \
       --adapter saves/flash-qwen25vl-3b-lora \
-      --test /data/flash/labels/v1_test_gold.jsonl \
+      --test dataset/labels/v1_test_gold_human.jsonl \
       --images-root /data/flash/images \
       --out report.json
 """
@@ -67,7 +69,7 @@ def main():
     ap.add_argument("--base", default="Qwen/Qwen2.5-VL-7B-Instruct")   # v1 base (Apache, working)
     ap.add_argument("--adapter", default="saves/qwen25vl-7b-lora",
                     help="LoRA dir (default = the v1 7B run). Pass '' or a base-only run to eval the base.")
-    ap.add_argument("--test", default="dataset/labels/v1_test_gold.jsonl")
+    ap.add_argument("--test", default="dataset/labels/v1_test_gold_human.jsonl")
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--bits", type=int, default=4, choices=[4, 16])
     ap.add_argument("--max-new-tokens", type=int, default=3072)  # entities lengthen target (~2.1k tok max)
