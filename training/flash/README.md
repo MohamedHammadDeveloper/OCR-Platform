@@ -46,6 +46,8 @@ On the GPU box, from `training/flash/`:
 ```bash
 git pull
 unzip -o /path/to/v4_images_bundle.zip -d dataset/
+ls dataset/images | head          # sanity: OCR1/ OCR2/ should be there
+python build_dataset.py           # MUST print: flash_train 4685 / flash_val 150
 llamafactory-cli train runs/qwen25vl-7b/lora_sft.yaml
 python evaluate.py --adapter saves/qwen25vl-7b-lora     --test dataset/labels/v1_test_gold_human.jsonl     --images-root dataset/images --out report_v4_human.json
 # baseline the OLD adapters on the SAME human test for a fair curve:
