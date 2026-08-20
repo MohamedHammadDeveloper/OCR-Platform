@@ -29,6 +29,32 @@ Run A (3B, **bf16 LoRA**) ~16–24 GB · Run B (7B, 4-bit QLoRA) ~16–24 GB. A 
 > output head. Fix: train the 3B in **bf16 (no `quantization_bit`)** — already set in Run A's config.
 > The 7B base is untied (lm_head saved) so 4-bit is fine there.
 
+
+## ▶️ v4 (2026-08-20): 7x data, Gemini-labeled, human test set
+Gold = `dataset/labels/labels_resolved.jsonl` (5694 pages, in git). Build the SFT data
+ON THE BOX (`data/` is gitignored — deterministic rebuild, seed 42):
+```bash
+python build_dataset.py --gold dataset/labels/labels_resolved.jsonl     --images-root dataset/images --out-dir ./data --val 150 --no-dedup
+```
+(`--no-dedup` is correct: labels_resolved is already md5-unique.)
+Expect: flash_train 4685 / flash_val 150. Images are NOT in git — unzip
+`v4_images_bundle.zip` so its `images/` lands at `training/flash/dataset/images/`
+(it also carries `labels/labels_resolved.jsonl` + `labels/v1_test_gold_human.jsonl`).
+
+On the GPU box, from `training/flash/`:
+```bash
+git pull
+unzip -o /path/to/v4_images_bundle.zip -d dataset/
+llamafactory-cli train runs/qwen25vl-7b/lora_sft.yaml
+python evaluate.py --adapter saves/qwen25vl-7b-lora     --test dataset/labels/v1_test_gold_human.jsonl     --images-root dataset/images --out report_v4_human.json
+# baseline the OLD adapters on the SAME human test for a fair curve:
+python evaluate.py --adapter m-hammad/legal-flash-7b-lora-v3     --test dataset/labels/v1_test_gold_human.jsonl --out report_v3_human.json
+python compare_reports.py report_v3_human.json report_v4_human.json
+```
+⚠️ Evaluate v4 AND v3 against `v1_test_gold_human.jsonl` (53 pages, human ground truth).
+Old `report_v3*.json` numbers were measured against Opus labels — NOT comparable.
+Upload: `m-hammad/legal-flash-7b-lora-v4` (private). Remember `unset HF_TOKEN` first.
+
 ## 1. Clone (first thing on the vast.ai box)
 ```bash
 git clone https://github.com/MohamedHammadDeveloper/OCR-Platform.git

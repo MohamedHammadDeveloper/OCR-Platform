@@ -5,6 +5,10 @@ description: Resume the Flash (MoJ OCR) project — continue from v1 (do NOT res
 You are resuming the **Flash / Ministry-of-Justice OCR fine-tuning** project. **v1 is already DONE**
 (trained + uploaded). Do NOT re-do setup or retry the 3B base — continue toward v2. Do this:
 
+**🗣️ لغة التواصل (مهم): كلّم المستخدم في الشات بالعربي المصري دائمًا** — كل الردود والتقارير وكروت
+الباتشات تبقى بالعربي. سيب الأكواد ومسارات الملفات والأوامر والمعرفات التقنية (أسماء الموديلات، HF
+repos، أسماء حقول الـ JSON) زي ما هي بالإنجليزي جوّه الكود.
+
 > **State (2026-08-12):** base = **Qwen/Qwen2.5-VL-7B-Instruct** (Apache); v1 adapter (private) =
 > **`m-hammad/legal-flash-7b-lora-v1`**; test: text-sim 0.29→0.46, type 0→45%, JSON 100%.
 > The **3B run is ⛔ BLOCKED** (lm_head won't tie → loss 11.93) — never retry it.
