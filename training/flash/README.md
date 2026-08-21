@@ -97,11 +97,18 @@ failures would at best reach parity, so the vision-tower experiment (Run D) is t
 The surviving hypothesis. v1-v4 all froze the vision encoder, so it never learned Arabic
 script — which explains why extra pixels bought nothing, and why the newer encoder in
 Qwen3-VL was the one thing that helped handwriting.
+The config pushes checkpoints to the Hub and logs to W&B, so **log in to both BEFORE
+launching** or the first push fails several minutes in:
 ```bash
+unset HF_TOKEN && hf auth login     # -> m-hammad/legal-flash-7b-vision (private)
+wandb login                         # -> run_name flash-v5-vision-tower
 llamafactory-cli train runs/qwen25vl-7b/lora_sft_vision.yaml
 python evaluate.py --adapter saves/qwen25vl-7b-lora-vision --out report_vision_human.json
 python compare_reports.py report_v4_matched.json report_vision_human.json
 ```
+Resuming after a dead box: add `resume_from_checkpoint: <path-or-hub-checkpoint>` to the yaml.
+An earlier attempt reached step 500/1758 before the host went into maintenance; its eval_loss
+beat v4 at every checkpoint from 200 on (delta -0.013 -> -0.023), which is why this run exists.
 **Beat this:** v4 @1.05M px → type 0.906 / text_sim 0.710 / kw 0.455.
 
 ## 1. Clone (first thing on the vast.ai box)
