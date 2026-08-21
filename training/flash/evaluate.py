@@ -73,9 +73,12 @@ def main():
     ap.add_argument("--images-root", default="dataset/images")
     ap.add_argument("--bits", type=int, default=4, choices=[4, 16])
     ap.add_argument("--max-new-tokens", type=int, default=3072)  # entities lengthen target (~2.1k tok max)
-    ap.add_argument("--max-pixels", type=int, default=0,
-                    help="cap each image to this many pixels at eval (0 = qwen default ~12.8M ≈ full res). "
-                         "Set to match training image_max_pixels (1048576) for a clean resolution sweep.")
+    ap.add_argument("--max-pixels", type=int, default=1048576,
+                    help="cap each image to this many pixels at eval. DEFAULT MATCHES the training "
+                         "image_max_pixels (1048576). Evaluating at a different budget than training "
+                         "is a distribution shift: measured on v4, scoring at full res (~8.7MP) instead "
+                         "of 1MP cost 5.7 points of type_accuracy (0.906 -> 0.849) for no text gain. "
+                         "Pass 0 for the qwen default (~12.8M ≈ full res).")
     ap.add_argument("--min-pixels", type=int, default=0)
     ap.add_argument("--out", default="report.json")
     ap.add_argument("--limit", type=int, default=0)

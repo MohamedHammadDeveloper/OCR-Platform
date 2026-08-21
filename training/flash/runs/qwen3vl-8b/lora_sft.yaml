@@ -1,0 +1,73 @@
+# === RUN C: Qwen3-VL-8B-Instruct (Apache-2.0) — BASE-MODEL EXPERIMENT ===
+# Controlled A/B against runs/qwen25vl-7b/lora_sft.yaml (= v4). The ONLY differences are
+# model_name_or_path, template and output_dir. Same data, same LoRA, same 1.05M pixel
+# budget, same 3 epochs — so any delta is attributable to the base model.
+#
+# WHY: post-v4 diagnostics ruled out the two obvious limits — eval resolution (8.7x more
+# pixels moved text_sim by 0.002) and generation truncation (longest gold target 2443 tok
+# vs a 3072 cap). What is left is the VISION side: freeze_vision_tower is true, so the
+# encoder never learns Arabic script, which also explains why extra pixels bought nothing.
+# Qwen3-VL's headline upgrade is a newer vision encoder (native OCR in 32 languages), so
+# it targets exactly that bottleneck. OCRBench 86.4 -> 89.6 is the only hard number we have,
+# on a saturated non-Arabic benchmark — treat this run as a test, not a sure thing.
+#
+# Baseline to beat (v4, evaluated at MATCHING 1.05M pixels on the 53-page human test):
+#   type_accuracy 0.906 | text_sim 0.710 | keyword_recall 0.455
+#
+# Run FROM training/flash/:
+#   llamafactory-cli train runs/qwen3vl-8b/lora_sft.yaml
+#   python evaluate.py --base Qwen/Qwen3-VL-8B-Instruct --adapter saves/qwen3vl-8b-lora #       --max-pixels 1048576 --out report_qwen3vl_human.json
+#
+# NOTE: evaluate.py loads Qwen2_5_VLForConditionalGeneration explicitly. If it errors on
+# this base, swap that class for AutoModelForImageTextToText.
+
+### model
+model_name_or_path: Qwen/Qwen3-VL-8B-Instruct
+trust_remote_code: true
+image_max_pixels: 1048576
+
+### method — QLoRA 4-bit is OK here: Qwen2.5-VL-7B has tie_word_embeddings=false
+### (lm_head is saved, not tied) so the 4-bit lm_head-tie bug that hits the 3B base
+### does NOT apply. If you ever see loss stuck at 11.93, drop quantization_bit (bf16).
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+quantization_bit: 4
+quantization_method: bnb
+freeze_vision_tower: true
+freeze_multi_modal_projector: true
+
+### dataset (shared — same ./data as Run A)
+dataset_dir: ./data
+dataset: flash_train
+eval_dataset: flash_val
+template: qwen3_vl
+cutoff_len: 8192
+overwrite_cache: true
+preprocessing_num_workers: 8
+
+### output (separate per run)
+output_dir: saves/qwen3vl-8b-lora
+logging_steps: 5
+save_steps: 100
+save_total_limit: 3
+plot_loss: true
+overwrite_output_dir: true
+report_to: none
+
+### train (identical hyperparams to Run A)
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 100

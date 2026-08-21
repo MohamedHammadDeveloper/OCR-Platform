@@ -37,8 +37,12 @@ Run A (3B, **bf16 LoRA**) ~16–24 GB · Run B (7B, 4-bit QLoRA) ~16–24 GB. A 
 | adapter | json | type_acc | text_sim | kw_recall |
 |---|---|---|---|---|
 | v3 (`legal-flash-7b-lora-v3`) | 1.000 | 0.528 | 0.561 | 0.405 |
-| **v4 (`legal-flash-7b-lora-v4`)** | 1.000 | **0.849** | **0.712** | **0.479** |
-| delta | — | **+0.321** | **+0.151** | +0.074 |
+| **v4 (`legal-flash-7b-lora-v4`)** | 1.000 | **0.906** | **0.710** | 0.455 |
+| delta | — | **+0.378** | **+0.149** | +0.050 |
+
+(v4 scored at MATCHING 1.05M pixels — `report_v4_matched.json`. Scoring the same adapter at
+full res gave 0.849 / 0.712 / 0.479: same text, **5.7 fewer points of type accuracy**.
+`evaluate.py --max-pixels` now defaults to the training budget so this cannot recur.)
 
 Per kind (text_sim v3→v4): مختلط 0.534→0.720 · مطبوع 0.674→0.798 · خط يد 0.186→0.217 (n=4).
 Page-level: v4 better on 43/53, worse on 1, tie 9. Pages <0.4: 18→5. Train 5h40m, eval_loss 0.3465.
@@ -69,6 +73,19 @@ python compare_reports.py report_v3_human.json report_v4_human.json
 ⚠️ Evaluate v4 AND v3 against `v1_test_gold_human.jsonl` (53 pages, human ground truth).
 Old `report_v3*.json` numbers were measured against Opus labels — NOT comparable.
 Upload: `m-hammad/legal-flash-7b-lora-v4` (private). Remember `unset HF_TOKEN` first.
+
+## ▶️ Run C: Qwen3-VL-8B base experiment (`runs/qwen3vl-8b/lora_sft.yaml`)
+Controlled A/B vs v4 — only the base model, template and output_dir differ. Post-v4
+diagnostics ruled out eval resolution and generation truncation, leaving the frozen vision
+encoder as the remaining bottleneck; Qwen3-VL's headline upgrade is a newer vision encoder.
+```bash
+python -c "from llamafactory.data.template import TEMPLATES; print('qwen3_vl' in TEMPLATES)"
+hf download Qwen/Qwen3-VL-8B-Instruct
+llamafactory-cli train runs/qwen3vl-8b/lora_sft.yaml
+python evaluate.py --base Qwen/Qwen3-VL-8B-Instruct --adapter saves/qwen3vl-8b-lora     --out report_qwen3vl_human.json
+python compare_reports.py report_v4_matched.json report_qwen3vl_human.json
+```
+**Beat this:** v4 @1.05M px → type 0.906 / text_sim 0.710 / kw 0.455.
 
 ## 1. Clone (first thing on the vast.ai box)
 ```bash
