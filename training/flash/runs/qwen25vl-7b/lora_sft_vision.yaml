@@ -12,8 +12,12 @@
 # Supporting signal: Qwen3-VL-8B (newer vision encoder) was worse overall but BETTER on
 # handwriting, 0.200 -> 0.347 - the one category where seeing the strokes matters most.
 #
-# LR is halved because the vision tower is now full-finetuned (not LoRA'd) alongside the
-# LoRA'd LLM; 1e-4 on raw encoder weights risks wrecking a pretrained encoder.
+# LR STAYS AT v4's 1e-4. An earlier version halved it, on the wrong assumption that an
+# unfrozen tower is FULLY finetuned. It is not: with finetuning_type=lora, LLaMA-Factory
+# only adds the vision modules to the LoRA forbidden-list when freeze_vision_tower is TRUE,
+# so unfreezing means the tower gets LoRA ADAPTERS, not raw weight updates. Nothing here
+# needs a gentler LR, and matching v4 keeps this a true single-variable experiment.
+# (Same reason the checkpoints stay ~100-200MB: they are adapters, not tower weights.)
 #
 # VRAM: noticeably higher than v4 (encoder grads + optimiser state). If it OOMs, either
 # unfreeze ONLY the projector (freeze_vision_tower: true, freeze_multi_modal_projector:
@@ -51,7 +55,7 @@ dataset: flash_train
 eval_dataset: flash_val
 template: qwen2_vl
 cutoff_len: 8192
-overwrite_cache: true
+overwrite_cache: false          # reuse the tokenised cache: ~30 min saved per relaunch
 preprocessing_num_workers: 8
 
 ### output (separate per run)
@@ -68,8 +72,7 @@ run_name: flash-v5-vision-tower
 ### took ~600 steps of progress with it; checkpoints on disk were unreachable for two days.
 ### hub_strategy: checkpoint pushes each save_steps checkpoint, so a dead box costs at most
 ### the steps since the last one. Requires `hf auth login` BEFORE launching, or the first
-### push fails. Note the checkpoints carry vision-tower weights (GBs, not the ~100MB a
-### frozen-tower LoRA would be), so pushes are not instant.
+### push fails.
 push_to_hub: true
 hub_model_id: m-hammad/legal-flash-7b-vision
 hub_private_repo: true
@@ -78,7 +81,7 @@ hub_strategy: checkpoint
 ### train (identical hyperparams to Run A)
 per_device_train_batch_size: 1
 gradient_accumulation_steps: 8
-learning_rate: 5.0e-5
+learning_rate: 1.0e-4
 num_train_epochs: 3.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.05

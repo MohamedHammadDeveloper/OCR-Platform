@@ -94,6 +94,25 @@ handwriting, 0.200 → 0.347. **Verdict: v4 stays the production model.** Chasin
 failures would at best reach parity, so the vision-tower experiment (Run D) is the better bet.
 
 ## ▶️ Run D: trainable vision tower (`runs/qwen25vl-7b/lora_sft_vision.yaml`)
+
+**Hyperparameter review (2026-08-22, after a web check of LLaMA-Factory + LoRA guidance):**
+
+| setting | value | why it is what it is |
+|---|---|---|
+| `learning_rate` | **1.0e-4** | Same as v4 -> single-variable test. An earlier draft halved it on the wrong belief that an unfrozen tower is fully finetuned; with `finetuning_type: lora` LLaMA-Factory only forbids the vision modules when `freeze_vision_tower: true`, so unfreezing gives the tower **LoRA adapters**. Nothing needs a gentler LR. |
+| `lora_rank` / `lora_alpha` | 16 / 32 | alpha = 2*rank, the documented ratio. Guidance says "choose 16 or 32" and warns that too-large a rank overfits. Rank 32 is the natural NEXT experiment, not this one. |
+| `num_train_epochs` | 3.0 | 1-3 is the recommended band; past 3 gives diminishing returns and overfitting risk. |
+| `warmup_ratio` | 0.05 | Inside the recommended 5-10% of steps. |
+| `quantization_bit` | 4 | Keep on a 24-32GB card (~14GB est. vs ~24GB unquantised). **Drop it on an 80GB card** - better precision AND faster, since QLoRA pays a dequantisation cost every forward. |
+| `image_max_pixels` | 1048576 | Held fixed. Resolution was ruled out as a lever *with a frozen encoder*; a trainable one may change that, which makes it a separate future experiment. |
+| `cutoff_len` | 8192 | Measured worst case is 4859 tokens, so nothing truncates. |
+| `overwrite_cache` | **false** | Reuses the tokenised cache: ~30 min saved on every relaunch, and relaunches happen. |
+| `packing` / `neat_packing` | off | Wrong for this data - one image per sample. |
+
+Not adopted, and why: LLaMA-Factory exposes no separate vision-tower LR (`vit_lr`), so the
+layer-wise-decay practice common in VLM papers is not available here; `loraplus_lr_ratio`
+and `use_liger_kernel` would each add a second variable to a test designed to isolate one.
+
 The surviving hypothesis. v1-v4 all froze the vision encoder, so it never learned Arabic
 script — which explains why extra pixels bought nothing, and why the newer encoder in
 Qwen3-VL was the one thing that helped handwriting.
