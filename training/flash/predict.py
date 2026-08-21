@@ -18,7 +18,7 @@ Usage:
 import argparse, json
 
 import torch
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+from transformers import AutoProcessor
 from qwen_vl_utils import process_vision_info
 import json_repair
 
@@ -44,7 +44,13 @@ def main():
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
 
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(args.model, **kw)
+    # Auto class, not a hardcoded one: a hardcoded Qwen2.5 class mis-loads other
+    # architectures (Qwen3-VL loses its vision merger weights silently).
+    try:
+        from transformers import AutoModelForImageTextToText as _cls
+    except ImportError:
+        from transformers import AutoModelForVision2Seq as _cls
+    model = _cls.from_pretrained(args.model, **kw)
     if args.adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, args.adapter)

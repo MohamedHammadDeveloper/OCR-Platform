@@ -21,7 +21,7 @@ Usage:
 import argparse, json, os
 
 import torch
-from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+from transformers import AutoProcessor, AutoConfig
 from qwen_vl_utils import process_vision_info
 from peft import PeftModel
 import json_repair
@@ -31,13 +31,36 @@ from prompt import INSTRUCTION
 
 
 def load(base, adapter, bits):
+    """Load whatever VLM `base` names - do NOT hardcode a model class.
+
+    Hardcoding Qwen2_5_VLForConditionalGeneration silently mis-loads a different
+    architecture: with Qwen3-VL the vision merger weights come back MISSING (randomly
+    initialised), and PEFT then dies with
+    "'Parameter' object has no attribute 'compress_statistics'" because those layers
+    never got quantised. The Auto class picks the right architecture from the config.
+    """
     kw = dict(trust_remote_code=True, torch_dtype=torch.bfloat16, device_map="auto")
     if bits == 4:
         from transformers import BitsAndBytesConfig
         kw["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(base, **kw)
+
+    cls = None
+    try:                                   # transformers >= 4.49
+        from transformers import AutoModelForImageTextToText as cls
+    except ImportError:
+        try:
+            from transformers import AutoModelForVision2Seq as cls
+        except ImportError:
+            pass
+    if cls is None:                        # last resort: the architecture named in the config
+        import transformers
+        arch = AutoConfig.from_pretrained(base, trust_remote_code=True).architectures[0]
+        cls = getattr(transformers, arch)
+
+    model = cls.from_pretrained(base, **kw)
+    print(f"loaded {base} as {type(model).__name__}")
     if adapter:
         model = PeftModel.from_pretrained(model, adapter)
     model.eval()
