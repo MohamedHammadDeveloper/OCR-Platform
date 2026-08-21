@@ -129,10 +129,17 @@ def main():
         kr = (sum(1 for k in gk if k and k in pt) / len(gk)) if gk else None
         if kr is not None:
             krecs.append(kr)
+        # Keep the PREDICTED text, not just the score. A score alone cannot tell a weak
+        # model from a broken one: the Qwen3-VL run produced 7 pages at text_sim < 0.1
+        # while still classifying 5 of them correctly, and there was no way to see whether
+        # full_text came back empty, truncated or looping without re-running inference.
         rows.append({"image": r["image"], "parsed": ok, "type_ok": bool(tacc),
                      "text_sim": round(sim, 3),
                      "gold_id": r.get("document_id"),
-                     "pred_id": pred.get("document_id") if ok else None})
+                     "pred_id": pred.get("document_id") if ok else None,
+                     "gold_chars": len(gt), "pred_chars": len(pt),
+                     "pred_text": pt, "pred_subject": pred.get("subject") if ok else None,
+                     "pred_keywords": pred.get("keywords") if ok else None})
         print(f"[{i}/{len(recs)}] type_ok={bool(tacc)} sim={sim:.3f} {r['image'].split('/')[-1]}")
 
     n = len(recs)

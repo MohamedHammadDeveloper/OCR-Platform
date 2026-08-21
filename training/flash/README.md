@@ -85,6 +85,23 @@ llamafactory-cli train runs/qwen3vl-8b/lora_sft.yaml
 python evaluate.py --base Qwen/Qwen3-VL-8B-Instruct --adapter saves/qwen3vl-8b-lora     --out report_qwen3vl_human.json
 python compare_reports.py report_v4_matched.json report_qwen3vl_human.json
 ```
+**RESULT (2026-08-21): Qwen3-VL-8B LOST.** type 0.774 / text_sim 0.592 / kw 0.391 vs
+v4's 0.906 / 0.710 / 0.455. Not a uniform gap: p90 is identical (0.955 vs 0.954) and it is
+page-level better on 16 / worse on 23 / tied on 14. The mean is dragged down by **7 pages at
+text_sim < 0.1** (v4 has 1) — and 5 of those 7 still got document_type RIGHT, so the model
+read the page but emitted a broken `full_text`. Notable counter-signal: it BEAT v4 on
+handwriting, 0.200 → 0.347. **Verdict: v4 stays the production model.** Chasing the 7
+failures would at best reach parity, so the vision-tower experiment (Run D) is the better bet.
+
+## ▶️ Run D: trainable vision tower (`runs/qwen25vl-7b/lora_sft_vision.yaml`)
+The surviving hypothesis. v1-v4 all froze the vision encoder, so it never learned Arabic
+script — which explains why extra pixels bought nothing, and why the newer encoder in
+Qwen3-VL was the one thing that helped handwriting.
+```bash
+llamafactory-cli train runs/qwen25vl-7b/lora_sft_vision.yaml
+python evaluate.py --adapter saves/qwen25vl-7b-lora-vision --out report_vision_human.json
+python compare_reports.py report_v4_matched.json report_vision_human.json
+```
 **Beat this:** v4 @1.05M px → type 0.906 / text_sim 0.710 / kw 0.455.
 
 ## 1. Clone (first thing on the vast.ai box)
