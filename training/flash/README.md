@@ -31,6 +31,18 @@ Run A (3B, **bf16 LoRA**) ~16–24 GB · Run B (7B, 4-bit QLoRA) ~16–24 GB. A 
 
 
 ## ▶️ v4 (2026-08-20): 7x data, Gemini-labeled, human test set
+
+**✅ v4 RESULT (2026-08-21, 53-page HUMAN test, both adapters scored on the same file):**
+
+| adapter | json | type_acc | text_sim | kw_recall |
+|---|---|---|---|---|
+| v3 (`legal-flash-7b-lora-v3`) | 1.000 | 0.528 | 0.561 | 0.405 |
+| **v4 (`legal-flash-7b-lora-v4`)** | 1.000 | **0.849** | **0.712** | **0.479** |
+| delta | — | **+0.321** | **+0.151** | +0.074 |
+
+Per kind (text_sim v3→v4): مختلط 0.534→0.720 · مطبوع 0.674→0.798 · خط يد 0.186→0.217 (n=4).
+Page-level: v4 better on 43/53, worse on 1, tie 9. Pages <0.4: 18→5. Train 5h40m, eval_loss 0.3465.
+Reports: `report_v3_human.json`, `report_v4_human.json`. **The data plateau was a labels problem.**
 Gold = `dataset/labels/labels_resolved.jsonl` (5694 pages, in git). Build the SFT data
 ON THE BOX (`data/` is gitignored — deterministic rebuild, seed 42):
 ```bash
