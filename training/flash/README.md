@@ -61,9 +61,13 @@ Expect: flash_train 4685 / flash_val 150. Images are NOT in git — unzip
 On the GPU box, from `training/flash/`:
 ```bash
 git pull
+# rm FIRST: `git clone` ships 778 v1 images, and `mv` refuses to merge into an existing
+# OCR1/ OCR2/ - it fails with "cannot overwrite", the copy silently does not happen, and
+# the shortfall only surfaces an hour into training. Everything here is in the bundle.
+rm -rf dataset/images && mkdir -p dataset/images
 unzip -o /path/to/v4_images_bundle.zip -d dataset/
-ls dataset/images | head          # sanity: OCR1/ OCR2/ should be there
-python build_dataset.py           # MUST print: flash_train 4685 / flash_val 150
+find dataset/images -name "*.png" | wc -l   # GATE: must be ~7852, not 778
+python build_dataset.py           # GATE: must print 4685 / 150 with NO hash WARNINGs
 llamafactory-cli train runs/qwen25vl-7b/lora_sft.yaml
 python evaluate.py --adapter saves/qwen25vl-7b-lora     --test dataset/labels/v1_test_gold_human.jsonl     --images-root dataset/images --out report_v4_human.json
 # baseline the OLD adapters on the SAME human test for a fair curve:
